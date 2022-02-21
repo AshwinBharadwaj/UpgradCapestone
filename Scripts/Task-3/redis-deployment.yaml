@@ -1,0 +1,106 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata: 
+  name: data
+  namespace: demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+  selector:
+    app: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: demo
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      #Initialize the system, modify the system configuration, and solve the warning information when redis starts
+      #initContainers:
+      #  - name: system-init
+      #    image: redis:6.2.3-alpine
+      #    imagePullPolicy: IfNotPresent
+      #    command:
+      #      - "sh"
+      #      - "-c"
+      #      - "echo 2048 > /proc/sys/net/core/somaxconn && echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+      #    securityContext:
+      #      privileged: true
+      #      runAsUser: 0
+      #    volumeMounts:
+      #    - name: sys
+      #      mountPath: /sys
+      containers:
+        - name: redis
+          image: redis:alpine
+          #command:
+          #  - "sh"
+          #  - "-c"
+          #  - "redis-server /etc/redis/redis.conf"
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          #livenessProbe:
+          #  tcpSocket:
+          #    port: 6379
+          #  initialDelaySeconds: 300
+          #  timeoutSeconds: 1
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  failureThreshold: 3
+          #readinessProbe:
+          #  tcpSocket:
+          #    port: 6379
+          #  initialDelaySeconds: 5
+          #  timeoutSeconds: 1
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redis
+            #- name: config
+              #mountPath: /tmp/redis/redis.config
+              #subPath: redis.conf
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+        - name: config
+          configMap:
+            name: redis-config
+        #- name: sys
+        #  hostPath:
+        #    path: /sys

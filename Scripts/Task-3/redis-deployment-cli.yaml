@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cli
+  labels:
+    app: redis-cli
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis-cli
+      port: 6379
+  selector:
+    app: redis-cli
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cli
+  namespace: demo
+  labels:
+    app: redis-cli
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-cli
+  template:
+    metadata:
+      labels:
+        app: redis-cli
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: redis-cli
+          image: redis:alpine          
+          command:
+            - "sh"
+            - "-c"
+            - "sleep 100000"
+            #- "redis-cli -h redis -p 6379"
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          #livenessProbe:
+          #  tcpSocket:
+          #    port: 6379
+          #  initialDelaySeconds: 300
+          #  timeoutSeconds: 1
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  failureThreshold: 3
+          #readinessProbe:
+          #  tcpSocket:
+          #    port: 6379
+          #  initialDelaySeconds: 5
+          #  timeoutSeconds: 1
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redis
+            #- name: config
+              #mountPath: /tmp/redis/redis.config
+              #subPath: redis.conf
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+        - name: config
+          configMap:
+            name: redis-config
+        #- name: sys
+        #  hostPath:
+        #    path: /sys
